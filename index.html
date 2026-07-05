@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PromptForge — turn a rough idea into a build-ready prompt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14120F;
+    --bg-alt:#1C1815;
+    --bg-inset:#0F0D0B;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.16);
+    --text:#F0EAE2;
+    --text-muted:#9C948A;
+    --text-dim:#6E675F;
+    --accent:#FF7A3D;
+    --accent-strong:#FF5E1A;
+    --accent-dim: rgba(255,122,61,0.14);
+    --steel:#7FB8C4;
+    --steel-dim: rgba(127,184,196,0.14);
+    --danger:#E5645A;
+    --radius-sm:4px;
+    --radius-md:6px;
+    --font-display:'Big Shoulders Display', sans-serif;
+    --font-body:'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono:'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--accent-dim); color:var(--text); }
+
+  button{ font-family:inherit; }
+  a{ color:inherit; }
+
+  :focus-visible{
+    outline:2px solid var(--steel);
+    outline-offset:2px;
+  }
+
+  .app{
+    max-width:1280px;
+    margin:0 auto;
+    padding:20px 24px 48px;
+    min-height:100%;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    padding:10px 4px 22px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  .wordmark{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:28px;
+    letter-spacing:0.01em;
+    display:flex;
+    align-items:baseline;
+    gap:2px;
+  }
+  .wordmark span.accent{ color:var(--accent); }
+  .tagline{
+    font-size:13px;
+    color:var(--text-dim);
+    margin-left:14px;
+    font-weight:400;
+  }
+  .topbar-left{ display:flex; align-items:baseline; flex-wrap:wrap; row-gap:4px; }
+
+  .btn-history{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:transparent;
+    border:1px solid var(--line-strong);
+    color:var(--text-muted);
+    padding:8px 14px;
+    border-radius:var(--radius-md);
+    cursor:pointer;
+    font-size:13px;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .btn-history:hover{ border-color:var(--steel); color:var(--steel); }
+
+  /* ---------- Layout ---------- */
+  .workshop{
+    display:grid;
+    grid-template-columns: minmax(320px, 420px) 1fr;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width: 880px){
+    .workshop{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background:var(--bg-alt);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:22px;
+  }
+
+  .step-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--steel);
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .step-label:not(:first-child){ margin-top:26px; }
+  .step-label::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  /* ---------- Type chips ---------- */
+  .chip-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:8px;
+  }
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:10px 12px;
+    background:var(--bg-inset);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:13px;
+    text-align:left;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .chip svg{ width:16px; height:16px; flex-shrink:0; opacity:.85; }
+  .chip:hover{ border-color:var(--line-strong); color:var(--text); }
+  .chip.is-active{
+    border-color:var(--accent);
+    color:var(--text);
+    background:var(--accent-dim);
+  }
+  .chip.is-active svg{ color:var(--accent); opacity:1; }
+
+  .custom-type-input{
+    margin-top:10px;
+    display:none;
+  }
+  .custom-type-input.is-visible{ display:block; }
+
+  /* ---------- Inputs ---------- */
+  textarea, input[type="text"], select{
+    width:100%;
+    background:var(--bg-inset);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    color:var(--text);
+    padding:11px 12px;
+    font-family:var(--font-body);
+    font-size:13.5px;
+    line-height:1.5;
+    transition:border-color .15s ease;
+  }
+  textarea:focus, input[type="text"]:focus, select:focus{ border-color:var(--steel); }
+  textarea::placeholder, input::placeholder{ color:var(--text-dim); }
+  textarea{ resize:vertical; min-height:84px; }
+  #ideaInput{ min-height:110px; }
+
+  select{
+    appearance:none;
+    -webkit-appearance:none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat:no-repeat;
+    cursor:pointer;
+  }
+
+  .field-hint{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:6px;
+  }
+
+  /* ---------- Tag input ---------- */
+  .tag-input{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    background:var(--bg-inset);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:8px;
+  }
+  .tag-input:focus-within{ border-color:var(--steel); }
+  .tag{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--steel-dim);
+    color:var(--steel);
+    border-radius:20px;
+    padding:4px 6px 4px 11px;
+    font-size:12.5px;
+    white-space:nowrap;
+  }
+  .tag button{
+    background:none;
+    border:none;
+    color:var(--steel);
+    opacity:.7;
+    cursor:pointer;
+    width:16px; height:16px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;
+    line-height:1;
+  }
+  .tag button:hover{ opacity:1; background:rgba(127,184,196,0.2); }
+  #featureEntry{
+    flex:1;
+    min-width:120px;
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-size:13px;
+    padding:5px 4px;
+  }
+  #featureEntry:focus{ outline:none; }
+
+  .quick-adds{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+  .quick-add{
+    background:transparent;
+    border:1px dashed var(--line-strong);
+    color:var(--text-dim);
+    border-radius:20px;
+    padding:5px 11px;
+    font-size:12px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .quick-add:hover{ border-color:var(--accent); color:var(--accent); }
+  .quick-add.is-used{ display:none; }
+
+  /* ---------- Output panel ---------- */
+  .panel--output{ position:sticky; top:20px; }
+  .output-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .stamp{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    border:1.5px solid var(--line-strong);
+    color:var(--text-dim);
+    padding:5px 11px;
+    border-radius:var(--radius-sm);
+    transform:rotate(-2deg);
+  }
+  .stamp.is-ready{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .stamp.is-ready{ animation: stampPop .35s ease; }
+  }
+  @keyframes stampPop{
+    0%{ transform:rotate(-2deg) scale(0.85); opacity:.4; }
+    60%{ transform:rotate(-2deg) scale(1.08); }
+    100%{ transform:rotate(-2deg) scale(1); opacity:1; }
+  }
+
+  .view-toggle{
+    display:flex;
+    background:var(--bg-inset);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:2px;
+    font-size:12px;
+  }
+  .view-toggle button{
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    padding:5px 12px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  .view-toggle button.is-active{ background:var(--bg-alt); color:var(--text); }
+
+  .word-count{ font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); }
+
+  .plate{
+    background:var(--bg-inset);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    border-radius:var(--radius-sm);
+    padding:20px;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    line-height:1.7;
+    color:var(--text);
+    white-space:pre-wrap;
+    word-break:break-word;
+    max-height:520px;
+    overflow-y:auto;
+  }
+  .plate:empty::before,
+  .plate .empty-state{
+    color:var(--text-dim);
+    font-style:italic;
+  }
+  .plate h-marker{ color:var(--steel); }
+
+  .action-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:16px;
+  }
+  .btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border-radius:var(--radius-md);
+    padding:10px 16px;
+    font-size:13px;
+    cursor:pointer;
+    border:1px solid transparent;
+    transition:filter .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-primary{ background:var(--accent); color:#1A1200; font-weight:600; }
+  .btn-primary:hover:not(:disabled){ background:var(--accent-strong); }
+  .btn-ghost{ background:transparent; border-color:var(--line-strong); color:var(--text-muted); }
+  .btn-ghost:hover:not(:disabled){ border-color:var(--steel); color:var(--steel); }
+  .btn-enhance{ background:transparent; border-color:var(--steel); color:var(--steel); }
+  .btn-enhance:hover:not(:disabled){ background:var(--steel-dim); }
+
+  .caveat{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:10px;
+    line-height:1.5;
+  }
+
+  /* ---------- History drawer ---------- */
+  .drawer-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.5);
+    display:none;
+    z-index:20;
+  }
+  .drawer-backdrop.is-open{ display:block; }
+  .drawer{
+    position:fixed;
+    top:0; right:0;
+    width:min(360px, 90vw);
+    height:100%;
+    background:var(--bg-alt);
+    border-left:1px solid var(--line-strong);
+    padding:22px;
+    overflow-y:auto;
+    transform:translateX(100%);
+    transition:transform .2s ease;
+  }
+  @media (prefers-reduced-motion: reduce){ .drawer{ transition:none; } }
+  .drawer.is-open{ transform:translateX(0); }
+  .drawer-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:16px;
+  }
+  .drawer-head h2{ font-family:var(--font-display); font-size:20px; font-weight:700; margin:0; }
+  .drawer-close{ background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer; line-height:1;}
+  .history-item{
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:12px;
+    margin-bottom:10px;
+  }
+  .history-item .h-type{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--steel);
+  }
+  .history-item .h-idea{ font-size:12.5px; color:var(--text-muted); margin:6px 0 8px; line-height:1.4; }
+  .history-item .h-date{ font-size:10.5px; color:var(--text-dim); }
+  .history-actions{ display:flex; gap:8px; margin-top:8px; }
+  .history-actions button{
+    font-size:11.5px; padding:5px 10px; border-radius:4px;
+    background:transparent; border:1px solid var(--line-strong); color:var(--text-muted); cursor:pointer;
+  }
+  .history-actions button:hover{ border-color:var(--accent); color:var(--accent); }
+  .history-empty{ color:var(--text-dim); font-size:13px; }
+  .clear-history{
+    display:block; width:100%; margin-top:8px;
+    background:none; border:1px dashed var(--line-strong); color:var(--text-dim);
+    padding:8px; border-radius:var(--radius-md); font-size:12px; cursor:pointer;
+  }
+  .clear-history:hover{ border-color:var(--danger); color:var(--danger); }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;
+    bottom:24px; left:50%;
+    transform:translateX(-50%) translateY(10px);
+    background:var(--bg-alt);
+    border:1px solid var(--line-strong);
+    color:var(--text);
+    padding:11px 18px;
+    border-radius:var(--radius-md);
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:30;
+  }
+  .toast.is-visible{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.is-error{ border-color:var(--danger); color:var(--danger); }
+
+  .spinner{
+    width:13px; height:13px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,0.25);
+    border-top-color:currentColor;
+    display:inline-block;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .spinner{ animation: spin .7s linear infinite; }
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- API Key Modal ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.65);
+    display:none;
+    z-index:40;
+    align-items:center;
+    justify-content:center;
+  }
+  .modal-backdrop.is-open{ display:flex; }
+  .modal{
+    background:var(--bg-alt);
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    padding:28px;
+    width:min(420px, 90vw);
+    position:relative;
+  }
+  .modal h3{
+    font-family:var(--font-display);
+    font-size:22px;
+    font-weight:700;
+    margin:0 0 8px;
+  }
+  .modal p{
+    font-size:13px;
+    color:var(--text-muted);
+    line-height:1.6;
+    margin:0 0 16px;
+  }
+  .modal p a{
+    color:var(--steel);
+    text-decoration:underline;
+  }
+  .modal-close{
+    position:absolute; top:14px; right:16px;
+    background:none; border:none; color:var(--text-dim);
+    font-size:20px; cursor:pointer; line-height:1;
+  }
+  .key-row{
+    display:flex; gap:8px;
+  }
+  .key-row input{
+    flex:1;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    letter-spacing:0.04em;
+  }
+  .key-indicator{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:10px;
+    font-size:12px;
+    color:var(--text-dim);
+    font-family:var(--font-mono);
+    min-height:18px;
+  }
+  .key-indicator .dot{
+    width:7px; height:7px;
+    border-radius:50%;
+    background:var(--text-dim);
+    flex-shrink:0;
+  }
+  .key-indicator.is-set .dot{ background:#5CB85C; }
+  .key-indicator.is-set{ color:#5CB85C; }
+  .warning-box{
+    background: rgba(229,100,90,0.1);
+    border:1px solid rgba(229,100,90,0.3);
+    border-radius:var(--radius-md);
+    padding:10px 12px;
+    font-size:12px;
+    color:#E5A09A;
+    line-height:1.5;
+    margin-top:14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="wordmark">PROMPT<span class="accent">FORGE</span></div>
+      <div class="tagline">describe the idea once — get a build-ready prompt</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn-history" id="apiKeyBtn" aria-haspopup="dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="15" r="4"/><path d="M12 11.5 22 1.5M19 4.5l2 2M16 4l1.5 1.5"/></svg>
+        <span id="apiKeyLabel">API Key</span>
+      </button>
+      <button class="btn-history" id="historyBtn" aria-haspopup="true">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        History
+      </button>
+    </div>
+  </div>
+
+  <main class="workshop">
+
+    <!-- LEFT: input panel -->
+    <section class="panel panel--input">
+
+      <div class="step-label">1 · Project type</div>
+      <div class="chip-grid" id="typeChips"></div>
+      <div class="custom-type-input" id="customTypeWrap">
+        <input type="text" id="customTypeInput" placeholder="Name your project type — e.g. CLI tool, Discord bot" />
+      </div>
+
+      <div class="step-label">2 · The idea</div>
+      <textarea id="ideaInput" placeholder="One or two sentences is enough — e.g. 'A habit tracker where friends can see each other's streaks and nudge each other.'"></textarea>
+
+      <div class="step-label">3 · Details <span style="text-transform:none;font-weight:400;color:var(--text-dim)">(optional, but worth 30 seconds)</span></div>
+
+      <label class="field-hint" for="stackInput" style="display:block;margin-bottom:6px;">Tech stack</label>
+      <input type="text" id="stackInput" placeholder="e.g. React, Next.js, Tailwind, Supabase" />
+
+      <div style="margin-top:14px;">
+        <label class="field-hint" style="display:block;margin-bottom:6px;">Must-have features</label>
+        <div class="tag-input" id="tagInputWrap">
+          <input type="text" id="featureEntry" placeholder="Type a feature, press Enter" />
+        </div>
+        <div class="quick-adds" id="quickAdds"></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label class="field-hint" for="audienceInput" style="display:block;margin-bottom:6px;">Who's it for? <span style="color:var(--text-dim)">(optional)</span></label>
+        <input type="text" id="audienceInput" placeholder="e.g. college students, my hackathon judges, myself" />
+      </div>
+
+      <div style="margin-top:14px;">
+        <label class="field-hint" for="constraintsInput" style="display:block;margin-bottom:6px;">Constraints <span style="color:var(--text-dim)">(optional)</span></label>
+        <textarea id="constraintsInput" style="min-height:64px;" placeholder="Deadlines, platforms to avoid, things that must stay simple..."></textarea>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label class="field-hint" for="formatSelect" style="display:block;margin-bottom:6px;">What should the AI hand you back?</label>
+        <select id="formatSelect">
+          <option value="full-code">Full working code, ready to run</option>
+          <option value="architecture-first">Architecture &amp; plan first, then code</option>
+          <option value="mvp">Simplest working version (MVP) first</option>
+          <option value="tutorial">Step-by-step, tutorial style</option>
+        </select>
+      </div>
+
+      <button class="btn btn-ghost" id="clearBtn" style="margin-top:20px;">Clear form</button>
+
+    </section>
+
+    <!-- RIGHT: output panel -->
+    <section class="panel panel--output">
+      <div class="output-head">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span class="stamp" id="stamp">Draft</span>
+          <div class="view-toggle" id="viewToggle" style="display:none;">
+            <button class="is-active" data-view="draft">Draft</button>
+            <button data-view="enhanced">Enhanced</button>
+          </div>
+        </div>
+        <span class="word-count" id="wordCount">0 words</span>
+      </div>
+
+      <div class="plate" id="plate"></div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" id="copyBtn">Copy prompt</button>
+        <button class="btn btn-ghost" id="downloadBtn">Download .md</button>
+        <button class="btn btn-enhance" id="enhanceBtn">
+          <span id="enhanceIcon">✨</span> Enhance with Claude
+        </button>
+      </div>
+      <div class="caveat">Copying or downloading saves this prompt to your history. "Enhance with Claude" calls the Anthropic API — click <strong style="color:var(--text-muted)">API Key</strong> in the top-right to add your key. Your key stays in memory only and is never stored or sent anywhere except directly to Anthropic.</div>
+    </section>
+
+  </main>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer" role="dialog" aria-label="Prompt history">
+  <div class="drawer-head">
+    <h2>History</h2>
+    <button class="drawer-close" id="drawerClose" aria-label="Close history">×</button>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- API Key Modal -->
+<div class="modal-backdrop" id="apiModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="apiModalTitle">
+  <div class="modal">
+    <button class="modal-close" id="apiModalClose" aria-label="Close">×</button>
+    <h3 id="apiModalTitle">🔑 Anthropic API Key</h3>
+    <p>
+      The "Enhance with Claude" feature needs your own Anthropic API key to work on this standalone site.
+      Get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.
+      New accounts get free credits to start.
+    </p>
+    <div class="key-row">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false" />
+      <button class="btn btn-primary" id="apiKeySaveBtn" style="white-space:nowrap;">Save</button>
+    </div>
+    <div class="key-indicator" id="keyIndicator">
+      <span class="dot"></span>
+      <span id="keyIndicatorText">No key set — Enhance button will be disabled</span>
+    </div>
+    <div class="warning-box">
+      ⚠️ Your key is kept in memory only (gone on page refresh). Never paste your key into a random website — this code is fully open source so you can verify it yourself on GitHub.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  const ICONS = {
+    website: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="15" rx="1.5"/><path d="M3 8.5h18"/><circle cx="6" cy="6.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="8" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
+    mobile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.2h2"/></svg>',
+    backend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="10" width="16" height="5" rx="1"/><rect x="4" y="16" width="16" height="5" rx="1"/><circle cx="7.3" cy="6.5" r="0.5" fill="currentColor" stroke="none"/><circle cx="7.3" cy="12.5" r="0.5" fill="currentColor" stroke="none"/><circle cx="7.3" cy="18.5" r="0.5" fill="currentColor" stroke="none"/></svg>',
+    ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7.8 7.3 10.3 16M16.2 7.3 13.7 16M8.2 6h7.6"/></svg>',
+    extension: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h4v2.2a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 1 2.3 2.3A1.6 1.6 0 0 0 19.1 12H21v4h-2.2a1.6 1.6 0 0 0-1.1 2.7 1.6 1.6 0 0 1-2.3 2.3A1.6 1.6 0 0 0 13.5 19.1V21h-4v-2.2a1.6 1.6 0 0 0-2.7-1.1 1.6 1.6 0 0 1-2.3-2.3A1.6 1.6 0 0 0 6.1 13.5H4v-4h2.2A1.6 1.6 0 0 0 7.3 6.8 1.6 1.6 0 0 1 9.6 4.5 1.6 1.6 0 0 0 9 4Z"/></svg>',
+    game: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="8" width="19" height="9" rx="4"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg>',
+    custom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5 20.5 7.5 8 20l-4.5 1 1-4.5Z"/></svg>'
+  };
+
+  const TYPE_META = {
+    website:   { label:'Website',           role:'full-stack web developer',        stackPh:'e.g. React, Next.js, Tailwind, Supabase',      quick:['Responsive design','Dark mode','User authentication','Search & filter','Contact form'] },
+    mobile:    { label:'Mobile App',        role:'cross-platform mobile developer', stackPh:'e.g. React Native, Flutter, Firebase',         quick:['Push notifications','Offline support','User authentication','Onboarding flow','In-app payments'] },
+    backend:   { label:'Backend / API',     role:'backend engineer',                stackPh:'e.g. Node.js + Express, PostgreSQL, Docker',   quick:['REST endpoints','Auth & authorization','Rate limiting','Database schema','API docs'] },
+    ai:        { label:'AI / ML Project',   role:'machine learning engineer',       stackPh:'e.g. Python, PyTorch, scikit-learn, pandas',   quick:['Data preprocessing pipeline','Model training script','Evaluation metrics','Inference API','Experiment tracking'] },
+    extension: { label:'Browser Extension', role:'browser extension developer',     stackPh:'e.g. Manifest V3, vanilla JS',                 quick:['Popup UI','Content script','Background service worker','Synced storage','Options page'] },
+    game:      { label:'Game',              role:'game developer',                  stackPh:'e.g. Unity + C#, Godot, Phaser',               quick:['Player movement','Scoring system','Level progression','Sound & music','Save / load state'] },
+    custom:    { label:'Custom',            role:'software engineer',               stackPh:'List any languages, frameworks, or platforms', quick:[] }
+  };
+
+  const FORMAT_META = {
+    'full-code':          'Give me full, working code I can run immediately. Explain key decisions briefly as you go, not before.',
+    'architecture-first': 'Start with a clear architecture and file structure. Wait for me to confirm before writing full code.',
+    'mvp':                'Build the simplest version that actually works first. I will ask for extra features after.',
+    'tutorial':           'Walk me through it step by step, like a tutorial, explaining each part as you build it.'
+  };
+
+  const state = {
+    type: 'website',
+    customType: '',
+    idea: '',
+    stack: '',
+    features: [],
+    audience: '',
+    constraints: '',
+    format: 'full-code',
+    enhanced: null,
+    view: 'draft'
+  };
+
+  // API key lives in memory only — never persisted
+  let _apiKey = '';
+
+  // ---------- DOM refs ----------
+  const $ = id => document.getElementById(id);
+  const typeChips = $('typeChips');
+  const customTypeWrap = $('customTypeWrap');
+  const customTypeInput = $('customTypeInput');
+  const ideaInput = $('ideaInput');
+  const stackInput = $('stackInput');
+  const featureEntry = $('featureEntry');
+  const tagInputWrap = $('tagInputWrap');
+  const quickAdds = $('quickAdds');
+  const audienceInput = $('audienceInput');
+  const constraintsInput = $('constraintsInput');
+  const formatSelect = $('formatSelect');
+  const clearBtn = $('clearBtn');
+  const stamp = $('stamp');
+  const plate = $('plate');
+  const wordCount = $('wordCount');
+  const viewToggle = $('viewToggle');
+  const copyBtn = $('copyBtn');
+  const downloadBtn = $('downloadBtn');
+  const enhanceBtn = $('enhanceBtn');
+  const toastEl = $('toast');
+  const apiKeyBtn = $('apiKeyBtn');
+  const apiKeyLabel = $('apiKeyLabel');
+  const apiModalBackdrop = $('apiModalBackdrop');
+  const apiModalClose = $('apiModalClose');
+  const apiKeyInput = $('apiKeyInput');
+  const apiKeySaveBtn = $('apiKeySaveBtn');
+  const keyIndicator = $('keyIndicator');
+  const keyIndicatorText = $('keyIndicatorText');
+  const historyBtn = $('historyBtn');
+  const drawer = $('drawer');
+  const drawerBackdrop = $('drawerBackdrop');
+  const drawerClose = $('drawerClose');
+  const historyList = $('historyList');
+
+  // ---------- helpers ----------
+  function slugify(s){
+    return (s||'project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'project';
+  }
+
+  function currentTypeLabel(){
+    return state.type === 'custom' ? (state.customType.trim() || 'Custom Project') : TYPE_META[state.type].label;
+  }
+
+  function buildPrompt(s){
+    const meta = TYPE_META[s.type];
+    const typeLabel = currentTypeLabel();
+    const lines = [];
+    lines.push(`# Project Brief — ${typeLabel}`);
+    lines.push('');
+    lines.push(`## Role`);
+    lines.push(`Act as an experienced ${meta.role}. Ask me questions only if something below is genuinely ambiguous — otherwise make sensible assumptions and state them.`);
+    lines.push('');
+    lines.push(`## The Idea`);
+    lines.push(s.idea.trim() || '_(not yet described)_');
+    if (s.audience.trim()){
+      lines.push('');
+      lines.push(`## Target Users`);
+      lines.push(s.audience.trim());
+    }
+    if (s.features.length){
+      lines.push('');
+      lines.push(`## Must-Have Features`);
+      s.features.forEach(f => lines.push(`- ${f}`));
+    }
+    lines.push('');
+    lines.push(`## Tech Stack`);
+    lines.push(s.stack.trim() || 'No strong preference — recommend a modern, well-supported stack and briefly say why.');
+    if (s.constraints.trim()){
+      lines.push('');
+      lines.push(`## Constraints`);
+      lines.push(s.constraints.trim());
+    }
+    lines.push('');
+    lines.push(`## What I Want From You`);
+    lines.push(FORMAT_META[s.format]);
+    lines.push('');
+    lines.push(`## Response Format`);
+    lines.push(`Use clear headings, keep code in complete runnable blocks, and call out any assumption you make.`);
+    return lines.join('\n');
+  }
+
+  // ---------- rendering ----------
+  function renderChips(){
+    typeChips.innerHTML = '';
+    Object.keys(TYPE_META).forEach(key => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip' + (state.type === key ? ' is-active' : '');
+      btn.dataset.type = key;
+      btn.innerHTML = ICONS[key] + '<span>' + TYPE_META[key].label + '</span>';
+      btn.addEventListener('click', () => {
+        state.type = key;
+        renderChips();
+        customTypeWrap.classList.toggle('is-visible', key === 'custom');
+        stackInput.placeholder = TYPE_META[key].stackPh;
+        renderQuickAdds();
+        renderPreview();
+        scheduleAutosave();
+      });
+      typeChips.appendChild(btn);
+    });
+    customTypeWrap.classList.toggle('is-visible', state.type === 'custom');
+    stackInput.placeholder = TYPE_META[state.type].stackPh;
+  }
+
+  function renderTags(){
+    tagInputWrap.querySelectorAll('.tag').forEach(t => t.remove());
+    state.features.forEach((f, i) => {
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = '<span></span><button aria-label="Remove ' + f + '">×</button>';
+      tag.querySelector('span').textContent = f;
+      tag.querySelector('button').addEventListener('click', () => {
+        state.features.splice(i, 1);
+        renderTags();
+        renderQuickAdds();
+        renderPreview();
+        scheduleAutosave();
+      });
+      tagInputWrap.insertBefore(tag, featureEntry);
+    });
+  }
+
+  function renderQuickAdds(){
+    quickAdds.innerHTML = '';
+    const suggestions = TYPE_META[state.type].quick;
+    suggestions.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'quick-add' + (state.features.includes(f) ? ' is-used' : '');
+      b.textContent = '+ ' + f;
+      b.addEventListener('click', () => {
+        if (!state.features.includes(f)){
+          state.features.push(f);
+          renderTags();
+          renderQuickAdds();
+          renderPreview();
+          scheduleAutosave();
+        }
+      });
+      quickAdds.appendChild(b);
+    });
+  }
+
+  function renderPreview(forceView){
+    const draft = buildPrompt(state);
+    const view = forceView && state.enhanced ? 'enhanced' : state.view;
+    state.view = state.enhanced ? view : 'draft';
+    const shown = (state.view === 'enhanced' && state.enhanced) ? state.enhanced : draft;
+
+    if (!state.idea.trim()){
+      plate.innerHTML = '<span class="empty-state">Fill in your idea on the left — your build-ready prompt will appear here.</span>';
+    } else {
+      plate.textContent = shown;
+    }
+
+    const isReady = state.idea.trim().length > 0;
+    stamp.textContent = isReady ? 'Ready' : 'Draft';
+    stamp.classList.toggle('is-ready', isReady);
+
+    const words = shown.trim() ? shown.trim().split(/\s+/).length : 0;
+    wordCount.textContent = words + ' word' + (words === 1 ? '' : 's');
+
+    viewToggle.style.display = state.enhanced ? 'flex' : 'none';
+    viewToggle.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('is-active', b.dataset.view === state.view);
+    });
+  }
+
+  // ---------- toast ----------
+  let toastTimer = null;
+  function toast(msg, isError){
+    clearTimeout(toastTimer);
+    toastEl.textContent = msg;
+    toastEl.classList.toggle('is-error', !!isError);
+    toastEl.classList.add('is-visible');
+    toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), 2600);
+  }
+
+  // ---------- storage ----------
+  async function safeGet(key){
+    try {
+      const res = await window.storage.get(key, false);
+      return res ? res.value : null;
+    } catch(e){ return null; }
+  }
+  async function safeSet(key, value){
+    try { await window.storage.set(key, value, false); } catch(e){ /* non-fatal */ }
+  }
+
+  let autosaveTimer = null;
+  function scheduleAutosave(){
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(async () => {
+      const snapshot = { ...state, enhanced: null };
+      await safeSet('promptforge-draft', JSON.stringify(snapshot));
+    }, 800);
+  }
+
+  async function restoreDraft(){
+    const raw = await safeGet('promptforge-draft');
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved, { enhanced: null, view: 'draft' });
+      customTypeInput.value = state.customType || '';
+      ideaInput.value = state.idea || '';
+      stackInput.value = state.stack || '';
+      audienceInput.value = state.audience || '';
+      constraintsInput.value = state.constraints || '';
+      formatSelect.value = state.format || 'full-code';
+    } catch(e){ /* ignore malformed */ }
+  }
+
+  async function pushHistory(promptText){
+    const raw = await safeGet('promptforge-history');
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch(e){ list = []; }
+    list.unshift({
+      id: Date.now().toString(),
+      type: currentTypeLabel(),
+      state: { ...state, enhanced: null },
+      prompt: promptText,
+      createdAt: new Date().toISOString()
+    });
+    list = list.slice(0, 30);
+    await safeSet('promptforge-history', JSON.stringify(list));
+  }
+
+  async function renderHistory(){
+    const raw = await safeGet('promptforge-history');
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch(e){ list = []; }
+    if (!list.length){
+      historyList.innerHTML = '<div class="history-empty">Nothing saved yet — copy or download a prompt to keep it here.</div>';
+      return;
+    }
+    historyList.innerHTML = '';
+    list.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      const date = new Date(item.createdAt);
+      div.innerHTML = `
+        <div class="h-type">${item.type}</div>
+        <div class="h-idea">${(item.state.idea || '').slice(0,120) || '(no idea text)'}</div>
+        <div class="h-date">${date.toLocaleDateString()} · ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+        <div class="history-actions">
+          <button data-action="load">Load</button>
+          <button data-action="copy">Copy</button>
+        </div>
+      `;
+      div.querySelector('[data-action="load"]').addEventListener('click', () => {
+        Object.assign(state, item.state, { enhanced: null, view: 'draft' });
+        customTypeInput.value = state.customType || '';
+        ideaInput.value = state.idea || '';
+        stackInput.value = state.stack || '';
+        audienceInput.value = state.audience || '';
+        constraintsInput.value = state.constraints || '';
+        formatSelect.value = state.format || 'full-code';
+        renderChips(); renderTags(); renderQuickAdds(); renderPreview();
+        closeDrawer();
+        toast('Loaded from history');
+      });
+      div.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(item.prompt); toast('Copied to clipboard'); }
+        catch(e){ toast('Could not copy — try selecting manually', true); }
+      });
+      historyList.appendChild(div);
+    });
+    const clearBtn2 = document.createElement('button');
+    clearBtn2.className = 'clear-history';
+    clearBtn2.textContent = 'Clear history';
+    clearBtn2.addEventListener('click', async () => {
+      await safeSet('promptforge-history', JSON.stringify([]));
+      renderHistory();
+      toast('History cleared');
+    });
+    historyList.appendChild(clearBtn2);
+  }
+
+  // ---------- drawer ----------
+  function openDrawer(){
+    drawer.classList.add('is-open');
+    drawerBackdrop.classList.add('is-open');
+    renderHistory();
+  }
+  function closeDrawer(){
+    drawer.classList.remove('is-open');
+    drawerBackdrop.classList.remove('is-open');
+  }
+  historyBtn.addEventListener('click', openDrawer);
+  drawerClose.addEventListener('click', closeDrawer);
+  drawerBackdrop.addEventListener('click', closeDrawer);
+
+  // ---------- input bindings ----------
+  customTypeInput.addEventListener('input', () => {
+    state.customType = customTypeInput.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  ideaInput.addEventListener('input', () => {
+    state.idea = ideaInput.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  stackInput.addEventListener('input', () => {
+    state.stack = stackInput.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  audienceInput.addEventListener('input', () => {
+    state.audience = audienceInput.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  constraintsInput.addEventListener('input', () => {
+    state.constraints = constraintsInput.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  formatSelect.addEventListener('change', () => {
+    state.format = formatSelect.value;
+    renderPreview();
+    scheduleAutosave();
+  });
+  featureEntry.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && featureEntry.value.trim()){
+      e.preventDefault();
+      const val = featureEntry.value.trim();
+      if (!state.features.includes(val)) state.features.push(val);
+      featureEntry.value = '';
+      renderTags();
+      renderQuickAdds();
+      renderPreview();
+      scheduleAutosave();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    Object.assign(state, {
+      type:'website', customType:'', idea:'', stack:'', features:[],
+      audience:'', constraints:'', format:'full-code', enhanced:null, view:'draft'
+    });
+    customTypeInput.value=''; ideaInput.value=''; stackInput.value='';
+    audienceInput.value=''; constraintsInput.value=''; formatSelect.value='full-code';
+    renderChips(); renderTags(); renderQuickAdds(); renderPreview();
+    safeSet('promptforge-draft', JSON.stringify(state));
+    toast('Form cleared');
+  });
+
+  viewToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-view]');
+    if (!btn) return;
+    state.view = btn.dataset.view;
+    renderPreview();
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = (state.view === 'enhanced' && state.enhanced) ? state.enhanced : buildPrompt(state);
+    if (!state.idea.trim()){ toast('Describe your idea first', true); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Copied to clipboard');
+      await pushHistory(text);
+    } catch(e){
+      toast('Could not copy — select and copy manually', true);
+    }
+  });
+
+  downloadBtn.addEventListener('click', async () => {
+    const text = (state.view === 'enhanced' && state.enhanced) ? state.enhanced : buildPrompt(state);
+    if (!state.idea.trim()){ toast('Describe your idea first', true); return; }
+    const blob = new Blob([text], {type:'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = slugify(currentTypeLabel()) + '-prompt.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Downloaded');
+    await pushHistory(text);
+  });
+
+  enhanceBtn.addEventListener('click', async () => {
+    if (!state.idea.trim()){ toast('Describe your idea first', true); return; }
+    if (!_apiKey){
+      openApiModal();
+      toast('Add your Anthropic API key first', true);
+      return;
+    }
+    const draft = buildPrompt(state);
+    enhanceBtn.disabled = true;
+    const originalHTML = enhanceBtn.innerHTML;
+    enhanceBtn.innerHTML = '<span class="spinner"></span> Enhancing…';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': _apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: 'You refine rough project briefs into sharp, build-ready prompts for an AI coding assistant. Improve clarity, tighten wording, and fill small reasonable gaps, but keep every section the user provided and the same markdown heading structure. Return ONLY the improved brief — no preamble, no commentary.\n\n---\n' + draft + '\n---'
+          }]
+        })
+      });
+      if (!res.ok){
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401) throw new Error('invalid-key');
+        throw new Error('status ' + res.status + ': ' + (errData.error?.message || ''));
+      }
+      const data = await res.json();
+      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+      if (!text) throw new Error('empty response');
+      state.enhanced = text;
+      state.view = 'enhanced';
+      renderPreview(true);
+      toast('Enhanced with Claude ✓');
+    } catch(err){
+      if (err.message === 'invalid-key'){
+        toast('Invalid API key — check it in the API Key menu', true);
+        openApiModal();
+      } else {
+        toast('Request failed — check your key or try again', true);
+      }
+    } finally {
+      enhanceBtn.disabled = false;
+      enhanceBtn.innerHTML = originalHTML;
+    }
+  });
+
+  // ---------- API key modal ----------
+  function updateKeyIndicator(){
+    const isSet = !!_apiKey;
+    keyIndicator.classList.toggle('is-set', isSet);
+    keyIndicatorText.textContent = isSet
+      ? 'Key saved — Enhance button is active'
+      : 'No key set — Enhance button will be disabled';
+    apiKeyLabel.textContent = isSet ? '🔑 Key set' : 'API Key';
+  }
+
+  function openApiModal(){
+    apiModalBackdrop.classList.add('is-open');
+    apiKeyInput.focus();
+  }
+  function closeApiModal(){
+    apiModalBackdrop.classList.remove('is-open');
+  }
+
+  apiKeyBtn.addEventListener('click', openApiModal);
+  apiModalClose.addEventListener('click', closeApiModal);
+  apiModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === apiModalBackdrop) closeApiModal();
+  });
+
+  apiKeySaveBtn.addEventListener('click', () => {
+    const val = apiKeyInput.value.trim();
+    if (!val){ toast('Paste your API key first', true); return; }
+    if (!val.startsWith('sk-ant-')){
+      toast('That doesn\'t look like an Anthropic key (should start with sk-ant-)', true);
+      return;
+    }
+    _apiKey = val;
+    updateKeyIndicator();
+    closeApiModal();
+    toast('API key saved — Enhance is now active');
+  });
+
+  apiKeyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') apiKeySaveBtn.click();
+  });
+
+  // ---------- init ----------
+  (async function init(){
+    renderChips();
+    renderTags();
+    renderQuickAdds();
+    await restoreDraft();
+    renderChips();
+    renderTags();
+    renderQuickAdds();
+    renderPreview();
+    updateKeyIndicator();
+  })();
+
+})();
+</script>
+
+</body>
+</html>
