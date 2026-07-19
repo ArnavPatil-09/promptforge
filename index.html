@@ -758,6 +758,122 @@ select {
 }
 
 /* ═══════════════════════════════════════
+   DIFF VIEW
+═══════════════════════════════════════ */
+.diff-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.diff-col { display: flex; flex-direction: column; gap: 6px; }
+.diff-label {
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.diff-plate {
+  max-height: 400px;
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+@media (max-width: 600px) {
+  .diff-wrap { grid-template-columns: 1fr; }
+  .diff-plate { max-height: 240px; }
+}
+
+/* ═══════════════════════════════════════
+   FORGE SCORE PANEL
+═══════════════════════════════════════ */
+.score-panel {
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r6);
+  padding: 16px;
+  margin-top: 4px;
+}
+.score-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.score-meter-wrap {
+  position: relative;
+  width: 64px; height: 64px;
+  flex-shrink: 0;
+}
+.score-ring {
+  width: 64px; height: 64px;
+  transform: rotate(-90deg);
+}
+.score-ring-bg {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 5;
+}
+.score-ring-fill {
+  fill: none;
+  stroke: var(--ember);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 163.4;
+  stroke-dashoffset: 163.4;
+  transition: stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1), stroke 0.4s ease;
+}
+.score-num {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text);
+}
+.score-meta { flex: 1; }
+.score-title {
+  font-family: var(--font-d);
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.score-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.score-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.score-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: var(--r4);
+  background: var(--bg-alt);
+  border: 1px solid var(--line);
+}
+.score-item-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+.score-item.is-good { border-color: rgba(92,184,92,0.25); }
+.score-item.is-good .score-item-icon::after { content: '✅'; }
+.score-item.is-warn { border-color: rgba(255,107,43,0.25); }
+.score-item.is-warn .score-item-icon::after { content: '⚠️'; }
+.score-item.is-bad  { border-color: rgba(229,100,90,0.3); }
+.score-item.is-bad  .score-item-icon::after { content: '❌'; }
+.btn-score {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.btn-score:hover { background: rgba(200,149,42,0.12); }
+
+/* ═══════════════════════════════════════
    TEMPLATES MODAL
 ═══════════════════════════════════════ */
 .tpl-modal-backdrop {
@@ -1107,17 +1223,52 @@ kbd {
           <div class="view-toggle" id="viewToggle" style="display:none;">
             <button class="is-active" data-view="draft">Draft</button>
             <button data-view="enhanced">Enhanced</button>
+            <button data-view="diff">Diff</button>
           </div>
         </div>
         <span class="word-count" id="wordCount">0 words</span>
       </div>
+
+      <!-- Normal plate -->
       <div class="plate" id="plate"></div>
+
+      <!-- Diff view -->
+      <div class="diff-wrap" id="diffWrap" style="display:none;">
+        <div class="diff-col">
+          <div class="diff-label">Draft</div>
+          <div class="plate diff-plate" id="diffDraft"></div>
+        </div>
+        <div class="diff-col">
+          <div class="diff-label" style="color:var(--ember);">Enhanced</div>
+          <div class="plate diff-plate" id="diffEnhanced"></div>
+        </div>
+      </div>
+
+      <!-- Forge Score panel -->
+      <div class="score-panel" id="scorePanel" style="display:none;">
+        <div class="score-head">
+          <div class="score-meter-wrap">
+            <svg class="score-ring" viewBox="0 0 64 64">
+              <circle class="score-ring-bg" cx="32" cy="32" r="26"/>
+              <circle class="score-ring-fill" id="scoreRingFill" cx="32" cy="32" r="26"/>
+            </svg>
+            <div class="score-num" id="scoreNum">—</div>
+          </div>
+          <div class="score-meta">
+            <div class="score-title" id="scoreTitle">Forge Score</div>
+            <div class="score-subtitle" id="scoreSubtitle">Run a score to see how strong your prompt is</div>
+          </div>
+        </div>
+        <div class="score-feedback" id="scoreFeedback"></div>
+      </div>
+
       <div class="action-row">
         <button class="btn-action btn-copy" id="copyBtn">Copy prompt</button>
         <button class="btn-action btn-dl" id="downloadBtn">Download .md</button>
-        <button class="btn-action btn-enhance" id="enhanceBtn">✨ Enhance with Claude</button>
+        <button class="btn-action btn-enhance" id="enhanceBtn">✨ Enhance</button>
+        <button class="btn-action btn-score" id="scoreBtn">⚡ Score</button>
       </div>
-      <div class="caveat">Copying or downloading saves to history. "Enhance" calls the Anthropic API — add your key via <strong style="color:var(--text-muted)">API Key</strong> top-right. Key stays in memory only.</div>
+      <div class="caveat">Copying or downloading saves to history. "Enhance" + "Score" call the Anthropic API — add your key via <strong style="color:var(--text-muted)">API Key</strong> top-right. Key stays in memory only.</div>
     </section>
 
   </div>
@@ -1332,8 +1483,17 @@ function updateMeta(text) {
   stamp.classList.toggle('is-ready', isReady);
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   wordCount.textContent = words + ' word' + (words === 1 ? '' : 's');
-  viewToggle.style.display = S.enhanced ? 'flex' : 'none';
+
+  // toggle view buttons
+  const hasEnhanced = !!S.enhanced;
+  viewToggle.style.display = hasEnhanced ? 'flex' : 'none';
   viewToggle.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.view === S.view));
+
+  // show/hide plate vs diff
+  const isDiff = S.view === 'diff' && hasEnhanced;
+  plate.style.display    = isDiff ? 'none' : 'block';
+  diffWrap.style.display = isDiff ? 'grid' : 'none';
+  if (isDiff) renderDiff();
 }
 
 /* ─── render preview ─── */
@@ -1720,7 +1880,135 @@ templatesBtn.addEventListener('click', openTemplates);
 tplModalClose.addEventListener('click', closeTemplates);
 tplModalBackdrop.addEventListener('click', e => { if (e.target === tplModalBackdrop) closeTemplates(); });
 
-/* ─── keyboard shortcuts ─── */
+const scoreBtn     = $('scoreBtn');
+const scorePanel   = $('scorePanel');
+const scoreNum     = $('scoreNum');
+const scoreTitle   = $('scoreTitle');
+const scoreSubtitle= $('scoreSubtitle');
+const scoreFeedback= $('scoreFeedback');
+const scoreRingFill= $('scoreRingFill');
+const diffWrap     = $('diffWrap');
+const diffDraft    = $('diffDraft');
+const diffEnhanced = $('diffEnhanced');
+
+/* ─── diff view ─── */
+function renderDiff() {
+  const draft    = buildPrompt(S);
+  const enhanced = S.enhanced || '';
+  diffDraft.textContent    = draft;
+  diffEnhanced.textContent = enhanced || '(enhance your prompt first to see diff)';
+  if (!enhanced) diffEnhanced.style.color = 'var(--text-dim)';
+  else diffEnhanced.style.color = '';
+}
+
+/* ─── scoring ─── */
+const SCORE_SYSTEM = `You are a prompt quality evaluator for AI coding assistants. You evaluate project briefs on how well they would help an AI produce exactly what a developer needs without back-and-forth.
+
+Respond ONLY with valid JSON in exactly this shape:
+{
+  "score": <integer 1-10>,
+  "label": "<one phrase summarising quality, e.g. 'Solid foundation' or 'Missing key details'>",
+  "feedback": [
+    { "type": "good|warn|bad", "text": "<specific actionable feedback>" },
+    ...
+  ]
+}
+
+Scoring rubric:
+- 9-10: Role, idea, stack, features, constraints, output format all present and specific
+- 7-8:  Most fields present, minor gaps
+- 5-6:  Core idea clear but stack or features missing
+- 3-4:  Idea vague or multiple key fields missing
+- 1-2:  Barely usable — idea too vague to act on
+
+Feedback rules:
+- Max 4 feedback items
+- Be specific: name the missing field or the weak part
+- "good" = strengths worth keeping, "warn" = improvable, "bad" = missing/blocking
+- Keep each item under 15 words`;
+
+function setScoreRing(score) {
+  const circumference = 163.4;
+  const pct = score / 10;
+  const offset = circumference - pct * circumference;
+  scoreRingFill.style.strokeDashoffset = offset;
+  // colour by score
+  if (score >= 8)      scoreRingFill.style.stroke = '#5CB85C';
+  else if (score >= 5) scoreRingFill.style.stroke = 'var(--ember)';
+  else                 scoreRingFill.style.stroke = 'var(--danger)';
+}
+
+scoreBtn.addEventListener('click', async () => {
+  if (!S.idea.trim()) { toast('Add your idea first', true); return; }
+  if (!_apiKey)       { openApiModal(); toast('Add your API key to use scoring', true); return; }
+
+  const draft = buildPrompt(S);
+  scoreBtn.disabled = true;
+  const origHTML = scoreBtn.innerHTML;
+  scoreBtn.innerHTML = '<span class="spinner"></span>';
+  scorePanel.style.display = 'block';
+  scoreNum.textContent = '…';
+  scoreTitle.textContent = 'Scoring…';
+  scoreSubtitle.textContent = 'Claude is reading your prompt';
+  scoreFeedback.innerHTML = '';
+  scoreRingFill.style.strokeDashoffset = '163.4';
+  scoreRingFill.style.stroke = 'var(--ember)';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        system: SCORE_SYSTEM,
+        messages: [{ role: 'user', content: 'Evaluate this prompt brief:\n\n' + draft }]
+      })
+    });
+
+    if (!res.ok) throw new Error(res.status === 401 ? 'invalid-key' : 'api-error');
+    const data = await res.json();
+    const raw  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+
+    let result;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      result = JSON.parse(clean);
+    } catch {
+      throw new Error('parse-error');
+    }
+
+    const score = Math.max(1, Math.min(10, Math.round(result.score)));
+    scoreNum.textContent    = score;
+    scoreTitle.textContent  = result.label || 'Forge Score';
+    scoreSubtitle.textContent = `${score}/10 — ${score >= 8 ? 'Ready to forge 🔥' : score >= 5 ? 'Getting there' : 'Needs work'}`;
+    setScoreRing(score);
+
+    scoreFeedback.innerHTML = '';
+    (result.feedback || []).forEach(item => {
+      const div = document.createElement('div');
+      div.className = `score-item is-${item.type}`;
+      div.innerHTML = `<span class="score-item-icon"></span><span>${item.text}</span>`;
+      scoreFeedback.appendChild(div);
+    });
+
+    toast(`Forge Score: ${score}/10`);
+  } catch(err) {
+    scoreNum.textContent = '!';
+    scoreTitle.textContent = 'Score failed';
+    scoreSubtitle.textContent = err.message === 'invalid-key' ? 'Invalid API key' : err.message === 'parse-error' ? 'Unexpected response — try again' : 'Check your API key or try again';
+    if (err.message === 'invalid-key') openApiModal();
+    toast('Scoring failed', true);
+  } finally {
+    scoreBtn.disabled = false;
+    scoreBtn.innerHTML = origHTML;
+  }
+});
 let kbdVisible = false;
 function toggleKbd() {
   kbdVisible = !kbdVisible;
