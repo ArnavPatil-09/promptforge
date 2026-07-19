@@ -23,7 +23,7 @@
 ![stack](https://img.shields.io/badge/stack-Vanilla_JS-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![api](https://img.shields.io/badge/AI-Claude_Sonnet-CC785C?style=flat-square)
 ![deploy](https://img.shields.io/badge/deploy-GitHub_Pages-181717?style=flat-square&logo=github)
-[![live](https://img.shields.io/badge/🔥_Live_Site-arnavpatil--09.github.io/PromptForge-FF6B2B?style=flat-square)](https://arnavpatil-09.github.io/PromptForge)
+[![live](https://img.shields.io/badge/🔥_Live_Site-arnavpatil--09.github.io/PromptForge-FF6B2B?style=flat-square)](https://arnavpatil-09.github.io/promptforge/)
 
 *Built by [Arnav Patil](https://github.com/ArnavPatil-09) — B.Tech Computer Engineering, Pillai College*
 
